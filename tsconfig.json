@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
     "allowJs": true,
+    "types": ["reflect-metadata"],
     "esModuleInterop": true,
-    "jsx": "react-native",
+    "jsx": "preserve",
     "lib": ["DOM", "ESNext"],
     "moduleResolution": "node",
     "noEmit": true,
@@ -12,8 +13,10 @@
     "strict": true,
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "noImplicitAny": true,
     "strictPropertyInitialization": false,
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "isolatedModules": true
   }
 }
