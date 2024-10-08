@@ -6,13 +6,22 @@ import {
   UseQueryResult,
   useMutation,
   useInfiniteQuery,
-  UseInfiniteQueryResult
+  UseInfiniteQueryResult,
 } from '@tanstack/react-query';
-import { plainToInstance, ClassConstructor, instanceToPlain } from 'class-transformer';
+import {
+  plainToInstance,
+  ClassConstructor,
+  instanceToPlain,
+} from 'class-transformer';
 import { apiService } from './api';
 import { isUndefined, omitBy } from 'lodash';
 import { createEntityInstance } from './utils/create-entity-instance';
-import { InfiniteQueryOptions, MutationOptions, QueryOptions, SlugQuery } from './types/api-options';
+import {
+  InfiniteQueryOptions,
+  MutationOptions,
+  QueryOptions,
+  Identifier,
+} from './types/api-options';
 import { ErrorResponse } from './types/api-call';
 import { BasePaginationRequest, BasePaginationResponse } from './models';
 import { getQueryClient } from './queries/get-query-client';
@@ -49,11 +58,15 @@ export function createApi<
     entityRequestConstructor,
     fromInstancePartial = false,
     invalidateQueryKeys,
-    additionalPaths
+    additionalPaths,
   } = options;
 
   const apiInstance = {
-    getQueryConfig: (paramsRequest?: TEntityRequest & { slug?: SlugQuery }, queryOptions?: QueryOptions<TEntity>) => {
+    getQueryConfig: (
+      id?: Identifier,
+      paramsRequest?: TEntityRequest,
+      queryOptions?: QueryOptions<TEntity>
+    ) => {
       const request = entityRequestConstructor
         ? (new entityRequestConstructor(paramsRequest || {}) as TEntityRequest)
         : ({} as TEntityRequest);
@@ -62,22 +75,25 @@ export function createApi<
         queryKey: [entityKey, paramsRequest],
         queryFn: async () => {
           const endpoint = additionalPaths?.get
-            ? `${baseEndpoint}${additionalPaths.get}${paramsRequest?.slug ? `/${paramsRequest.slug}` : ''}`
-            : `${baseEndpoint}${paramsRequest?.slug ? `/${paramsRequest.slug}` : ''}`;
+            ? `${baseEndpoint}${additionalPaths.get}${id ? `/${id}` : ''}`
+            : `${baseEndpoint}${id ? `/${id}` : ''}`;
 
           const data = await apiService.get<TEntity>(
             endpoint,
             omitBy(instanceToPlain<TEntityRequest>(request), isUndefined)
           );
 
-          return createEntityInstance<TEntity>(entityConstructor, data, { fromInstancePartial });
+          return createEntityInstance<TEntity>(entityConstructor, data, {
+            fromInstancePartial,
+          });
         },
-        ...queryOptions
+        ...queryOptions,
       };
     },
 
     getQueryArrayConfig: (
-      paramsRequest?: TEntityRequest & { slug?: SlugQuery },
+      id?: Identifier,
+      paramsRequest?: TEntityRequest,
       queryOptions?: QueryOptions<Array<TEntity>>
     ) => {
       const request = entityRequestConstructor
@@ -88,82 +104,119 @@ export function createApi<
         queryKey: [entityKey, paramsRequest],
         queryFn: async () => {
           const endpoint = additionalPaths?.getArray
-            ? `${baseEndpoint}${additionalPaths.getArray}${paramsRequest?.slug ? `/${paramsRequest.slug}` : ''}`
-            : `${baseEndpoint}${paramsRequest?.slug ? `/${paramsRequest.slug}` : ''}`;
+            ? `${baseEndpoint}${additionalPaths.getArray}${id ? `/${id}` : ''}`
+            : `${baseEndpoint}${id ? `/${id}` : ''}`;
 
           const data = await apiService.get<Array<TEntity>>(
             endpoint,
             omitBy(instanceToPlain<TEntityRequest>(request), isUndefined)
           );
 
-          return data?.map((item) => createEntityInstance<TEntity>(entityConstructor, item, { fromInstancePartial }));
+          return data?.map((item) =>
+            createEntityInstance<TEntity>(entityConstructor, item, {
+              fromInstancePartial,
+            })
+          );
         },
-        ...queryOptions
+        ...queryOptions,
       };
     },
 
     getListQueryConfig: (
       paramsRequest?: TSearchRequest,
-      queryOptions?: Omit<QueryOptions<BasePaginationResponse<TEntity>>, 'queryKey' | 'queryFn'>
+      queryOptions?: Omit<
+        QueryOptions<BasePaginationResponse<TEntity>>,
+        'queryKey' | 'queryFn'
+      >
     ) => {
-      const request = new entityListRequestConstructor(paramsRequest || {}) as TSearchRequest;
+      const request = new entityListRequestConstructor(
+        paramsRequest || {}
+      ) as TSearchRequest;
 
       return {
         queryKey: [entityKey, paramsRequest ?? {}],
         queryFn: async () => {
-          const endpoint = additionalPaths?.list ? `${baseEndpoint}${additionalPaths.list}` : `${baseEndpoint}`;
+          const endpoint = additionalPaths?.list
+            ? `${baseEndpoint}${additionalPaths.list}`
+            : `${baseEndpoint}`;
 
-          const response = await apiService.get<BasePaginationResponse<TEntity>>(
+          const response = await apiService.get<
+            BasePaginationResponse<TEntity>
+          >(
             endpoint,
             omitBy(instanceToPlain<TSearchRequest>(request), isUndefined)
           );
 
-          const { items, ...pagination } = plainToInstance(BasePaginationResponse<TEntity>, response || {});
+          const { items, ...pagination } = plainToInstance(
+            BasePaginationResponse<TEntity>,
+            response || {}
+          );
 
           return {
             ...pagination,
-            items: items?.map((item) => createEntityInstance<TEntity>(entityConstructor, item, { fromInstancePartial }))
+            items: items?.map((item) =>
+              createEntityInstance<TEntity>(entityConstructor, item, {
+                fromInstancePartial,
+              })
+            ),
           } as BasePaginationResponse<TEntity>;
         },
-        ...queryOptions
+        ...queryOptions,
       };
     },
 
     useGetQuery: (
-      paramsRequest: TEntityRequest & { slug?: SlugQuery },
+      id?: Identifier,
+      paramsRequest?: TEntityRequest,
       queryOptions?: QueryOptions<TEntity>
     ): UseQueryResult<TEntity> => {
-      return useQuery<TEntity>(apiInstance.getQueryConfig(paramsRequest, queryOptions));
+      return useQuery<TEntity>(
+        apiInstance.getQueryConfig(id, paramsRequest, queryOptions)
+      );
     },
 
     useGetArrayQuery: (
-      paramsRequest: TEntityRequest & { slug?: SlugQuery },
+      id?: Identifier,
+      paramsRequest?: TEntityRequest,
       queryOptions?: QueryOptions<Array<TEntity>>
     ): UseQueryResult<Array<TEntity>> => {
-      return useQuery<Array<TEntity>>(apiInstance.getQueryArrayConfig(paramsRequest, queryOptions));
+      return useQuery<Array<TEntity>>(
+        apiInstance.getQueryArrayConfig(id, paramsRequest, queryOptions)
+      );
     },
 
     useGetListQuery: (
       paramsRequest?: TSearchRequest,
-      queryOptions?: Omit<QueryOptions<BasePaginationResponse<TEntity>>, 'queryKey' | 'queryFn'>
+      queryOptions?: Omit<
+        QueryOptions<BasePaginationResponse<TEntity>>,
+        'queryKey' | 'queryFn'
+      >
     ): UseQueryResult<BasePaginationResponse<TEntity>> => {
-      return useQuery<BasePaginationResponse<TEntity>>(apiInstance.getListQueryConfig(paramsRequest, queryOptions));
+      return useQuery<BasePaginationResponse<TEntity>>(
+        apiInstance.getListQueryConfig(paramsRequest, queryOptions)
+      );
     },
 
     useConfiguredQuery: (options: UseQueryOptions<TEntity>) => {
       return useQuery(options);
     },
 
-    useConfiguredListQuery: (options: UseQueryOptions<BasePaginationResponse<TEntity>>) => {
+    useConfiguredListQuery: (
+      options: UseQueryOptions<BasePaginationResponse<TEntity>>
+    ) => {
       return useQuery(options);
     },
 
     useGetInfiniteListQuery: (
-      paramsRequest?: TSearchRequest extends BasePaginationRequest ? TSearchRequest : never,
+      paramsRequest?: TSearchRequest extends BasePaginationRequest
+        ? TSearchRequest
+        : never,
       queryOptions?: InfiniteQueryOptions<
         {
           pages: Array<BasePaginationResponse<TEntity>>;
-          pageParams: TSearchRequest extends BasePaginationRequest ? TSearchRequest : never;
+          pageParams: TSearchRequest extends BasePaginationRequest
+            ? TSearchRequest
+            : never;
         },
         BasePaginationResponse<TEntity>,
         TSearchRequest extends BasePaginationRequest ? TSearchRequest : never
@@ -171,34 +224,55 @@ export function createApi<
     ): UseInfiniteQueryResult<
       {
         pages: Array<BasePaginationResponse<TEntity>>;
-        pageParams: TSearchRequest extends BasePaginationRequest ? TSearchRequest : never;
+        pageParams: TSearchRequest extends BasePaginationRequest
+          ? TSearchRequest
+          : never;
       },
       ErrorResponse
     > => {
-      const request = new entityListRequestConstructor(paramsRequest || {}) as TSearchRequest extends BasePaginationRequest
+      const request = new entityListRequestConstructor(
+        paramsRequest || {}
+      ) as TSearchRequest extends BasePaginationRequest
         ? TSearchRequest
         : never;
 
       return useInfiniteQuery({
         queryKey: [entityKey, paramsRequest ?? {}],
         queryFn: async ({ pageParam }) => {
-          const endpoint = additionalPaths?.list ? `${baseEndpoint}${additionalPaths.list}` : `${baseEndpoint}`;
+          const endpoint = additionalPaths?.list
+            ? `${baseEndpoint}${additionalPaths.list}`
+            : `${baseEndpoint}`;
 
-          const response = await apiService.get<BasePaginationResponse<TEntity>>(
+          const response = await apiService.get<
+            BasePaginationResponse<TEntity>
+          >(
             endpoint,
             omitBy(
-              instanceToPlain<TSearchRequest extends BasePaginationRequest ? TSearchRequest : never>(
-                pageParam as TSearchRequest extends BasePaginationRequest ? TSearchRequest : never
+              instanceToPlain<
+                TSearchRequest extends BasePaginationRequest
+                  ? TSearchRequest
+                  : never
+              >(
+                pageParam as TSearchRequest extends BasePaginationRequest
+                  ? TSearchRequest
+                  : never
               ),
               isUndefined
             )
           );
 
-          const { items, ...pagination } = plainToInstance(BasePaginationResponse<TEntity>, response || {});
+          const { items, ...pagination } = plainToInstance(
+            BasePaginationResponse<TEntity>,
+            response || {}
+          );
 
           return {
             ...pagination,
-            items: items?.map((item) => createEntityInstance<TEntity>(entityConstructor, item, { fromInstancePartial }))
+            items: items?.map((item) =>
+              createEntityInstance<TEntity>(entityConstructor, item, {
+                fromInstancePartial,
+              })
+            ),
           } as BasePaginationResponse<TEntity>;
         },
         initialPageParam: request,
@@ -206,24 +280,30 @@ export function createApi<
           if (lastPageParam.page && lastPage.pages) {
             return lastPageParam.page < lastPage.pages
               ? (new entityListRequestConstructor({
-                ...lastPageParam,
-                page: lastPageParam.page + 1
-              }) as TSearchRequest extends BasePaginationRequest ? TSearchRequest : never)
+                  ...lastPageParam,
+                  page: lastPageParam.page + 1,
+                }) as TSearchRequest extends BasePaginationRequest
+                  ? TSearchRequest
+                  : never)
               : undefined;
           }
 
           return undefined;
         },
-        ...queryOptions
+        ...queryOptions,
       });
     },
 
     useCreateMutation: (
-      mutationOptions?: MutationOptions<TEntity, unknown, TEntityCreate> & { onAfterSuccess?: () => void }
+      mutationOptions?: MutationOptions<TEntity, unknown, TEntityCreate> & {
+        onAfterSuccess?: () => void;
+      }
     ) => {
       return useMutation<TEntity, unknown, TEntityCreate>({
         mutationFn: async (data) => {
-          const endpoint = additionalPaths?.create ? `${baseEndpoint}${additionalPaths.create}` : `${baseEndpoint}`;
+          const endpoint = additionalPaths?.create
+            ? `${baseEndpoint}${additionalPaths.create}`
+            : `${baseEndpoint}`;
 
           const request = entityCreateConstructor
             ? (new entityCreateConstructor(data || {}) as TEntityCreate)
@@ -240,28 +320,42 @@ export function createApi<
           const queryClient = getQueryClient();
 
           if (invalidateQueryKeys) {
-            await Promise.all(invalidateQueryKeys.map((key) => queryClient.invalidateQueries({ queryKey: [key] })));
+            await Promise.all(
+              invalidateQueryKeys.map((key) =>
+                queryClient.invalidateQueries({ queryKey: [key] })
+              )
+            );
           } else {
             await queryClient.invalidateQueries({ queryKey: [entityKey] });
           }
           mutationOptions?.onAfterSuccess?.();
         },
-        ...mutationOptions
+        ...mutationOptions,
       });
     },
 
     useUpdateMutation: (
-      mutationOptions?: MutationOptions<TEntity, ErrorResponse, Partial<TEntity>> & {
+      mutationOptions?: MutationOptions<
+        TEntity,
+        ErrorResponse,
+        Partial<TEntity>
+      > & {
         onAfterSuccess?: () => void;
       }
     ) => {
-      return useMutation<TEntity, ErrorResponse, Partial<TEntity> & { id: SlugQuery }>({
+      return useMutation<
+        TEntity,
+        ErrorResponse,
+        Partial<TEntity> & { id: Identifier }
+      >({
         mutationFn: async (data) => {
           const endpoint = additionalPaths?.update
             ? `${baseEndpoint}${additionalPaths.update}/${data.id}`
             : `${baseEndpoint}/${data.id}`;
 
-          const request = entityConstructor ? (new entityConstructor(data || {}) as TEntity) : ({} as TEntity);
+          const request = entityConstructor
+            ? (new entityConstructor(data || {}) as TEntity)
+            : ({} as TEntity);
 
           const response = await apiService.put<TEntity>(
             endpoint,
@@ -274,21 +368,27 @@ export function createApi<
           const queryClient = getQueryClient();
 
           if (invalidateQueryKeys) {
-            await Promise.all(invalidateQueryKeys.map((key) => queryClient.invalidateQueries({ queryKey: [key] })));
+            await Promise.all(
+              invalidateQueryKeys.map((key) =>
+                queryClient.invalidateQueries({ queryKey: [key] })
+              )
+            );
           } else {
             await queryClient.invalidateQueries({ queryKey: [entityKey] });
           }
           mutationOptions?.onAfterSuccess?.();
         },
-        ...mutationOptions
+        ...mutationOptions,
       });
     },
 
     useDeleteMutation: (
-      mutationOptions?: MutationOptions<void, ErrorResponse, SlugQuery> & { onAfterSuccess?: () => void }
+      mutationOptions?: MutationOptions<void, ErrorResponse, Identifier> & {
+        onAfterSuccess?: () => void;
+      }
     ) => {
-      return useMutation<void, ErrorResponse, SlugQuery>({
-        mutationFn: async (id: SlugQuery) => {
+      return useMutation<void, ErrorResponse, Identifier>({
+        mutationFn: async (id: Identifier) => {
           const endpoint = additionalPaths?.delete
             ? `${baseEndpoint}${additionalPaths.delete}/${id}`
             : `${baseEndpoint}/${id}`;
@@ -299,15 +399,19 @@ export function createApi<
           const queryClient = getQueryClient();
 
           if (invalidateQueryKeys) {
-            await Promise.all(invalidateQueryKeys.map((key) => queryClient.invalidateQueries({ queryKey: [key] })));
+            await Promise.all(
+              invalidateQueryKeys.map((key) =>
+                queryClient.invalidateQueries({ queryKey: [key] })
+              )
+            );
           } else {
             await queryClient.invalidateQueries({ queryKey: [entityKey] });
           }
           mutationOptions?.onAfterSuccess?.();
         },
-        ...mutationOptions
+        ...mutationOptions,
       });
-    }
+    },
   };
 
   return apiInstance;
