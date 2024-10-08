@@ -32,4 +32,4 @@ export type InfiniteQueryOptions<InfiniteTData, TData, TPageParams> =
     'getNextPageParam' | 'initialPageParam'
   >;
 
-export type SlugQuery = number | string;
+export type Identifier = number | string;
