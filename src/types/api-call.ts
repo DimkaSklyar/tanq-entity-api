@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { AxiosError, AxiosRequestConfig } from 'axios';
+import type { AxiosRequestConfig } from 'axios';
 import { AxiosResponse } from 'axios';
 
 export type HttpClientProps = {
@@ -17,10 +17,6 @@ export type ErrorResponse = {
     message?: string;
   };
 };
-
-export type BaseFetchErrorResponse = {
-  detail?: string;
-}
 
 type DataOnly = <T = unknown>(
   endpoint: string,

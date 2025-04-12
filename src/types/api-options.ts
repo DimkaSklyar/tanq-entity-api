@@ -6,7 +6,8 @@ import {
 } from '@tanstack/react-query';
 import { ErrorResponse } from './api-call';
 
-type PartialPick<T, F extends keyof T> = Omit<T, F> & Partial<Pick<T, F>>;
+export type PartialPick<T, F extends keyof T> = Omit<T, F> &
+  Partial<Pick<T, F>>;
 
 export type QueryOptions<TData> = Omit<
   UseQueryOptions<TData>,
