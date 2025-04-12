@@ -1,6 +1,6 @@
 import { Exclude, Expose, Type } from 'class-transformer';
 
-export class BasePaginationResponse<T> {
+export class PaginationResponse<T> {
   @Expose({ toClassOnly: true })
   public page: number;
 

@@ -1,7 +1,7 @@
 import {
   ClassConstructor,
   instanceToPlain,
-  plainToInstance
+  plainToInstance,
 } from 'class-transformer';
 
 export const createEntityInstance = <TEntity, TPlain extends object = object>(
